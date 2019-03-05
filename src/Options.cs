@@ -4,7 +4,7 @@ namespace DuaBot
 {
     public class Options
     {
-        private static Options _instance = null;
+        private static Options _instance;
         public static Options Default
         {
             get
@@ -24,14 +24,15 @@ namespace DuaBot
             UseCalendarSubject = true;
 
 
+
             // Run calendar every 30 minutes to queue tasks
-            CalendarServiceInterval = TimeSpan.FromMinutes(30);
+            CalendarServiceInterval = TimeSpan.FromSeconds(10);
 
             // The slack service consumes all the tasks
-            SlackServiceInterval = TimeSpan.FromMinutes(1);
+            SlackServiceInterval = TimeSpan.FromSeconds(2);
 
             // Just to keep the database neat and clean
-            SlackServiceDeleteInterval = TimeSpan.FromMinutes(60);
+            SlackServiceDeleteInterval = CalendarServiceInterval * 2;
 
             MsGraphScopes = "user.read calendars.read";
             MsGraphRedirectUri = "http://localhost:5000/api/msgraph/authenticate";

@@ -51,8 +51,11 @@ namespace DuaBot.Data
 
         public static async Task<CalendarEvent> GetCalendarEvents(this HttpClient httpClient, UserTokenMap token, CancellationToken ct)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get,
-            "https://graph.microsoft.com/v1.0/me/calendarview?startdatetime=2019-03-01T18:54:43.926Z&enddatetime=2019-03-02T18:54:43.926Z");
+            var url = "https://graph.microsoft.com/v1.0/me/calendarview";
+            url += "?startdatetime=" + DateTime.UtcNow.ToString("o");
+            url += "&enddatetime=" + (DateTime.UtcNow + Options.Default.CalendarServiceInterval).ToString("o");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("Authorization", "Bearer " + token.AccessToken);
             var response = await httpClient.SendAsync(request, ct);
             response.EnsureSuccessStatusCode();

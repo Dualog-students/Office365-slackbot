@@ -46,6 +46,7 @@ namespace DuaBot
         private static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseKestrel()
+                .UseUrls("http://localhost:5000")
                 .UseStartup<Startup>()
                 .UseSerilog((context, logConfig) =>
                 {

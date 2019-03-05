@@ -40,6 +40,8 @@ namespace DuaBot.Services
                     }
                 }
 
+                _logger.LogInformation("[SlackService]: Waiting for {0} minutes..",
+                    Options.Default.SlackServiceInterval.TotalMinutes);
                 await Task.Delay(Options.Default.SlackServiceInterval, stoppingToken);
             }
 
@@ -53,11 +55,11 @@ namespace DuaBot.Services
                     try
                     {
                         await httpClient.UpdateUserSlackStatus(task, ct);
-                        _logger.LogInformation("Update slack status for {0}", task.SlackUserId);
+                        _logger.LogInformation("[SlackService]: Update slack status for {0}", task.SlackUserId);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Something went wrong when update slack status for user {0}", task.SlackUserId);
+                        _logger.LogError(ex, "[SlackService]: Something went wrong when update slack status for user {0}", task.SlackUserId);
                     }
                 },
                 new ExecutionDataflowBlockOptions()
@@ -80,13 +82,15 @@ namespace DuaBot.Services
                         var hey = db.SlackUpdateTasks.ToArray();
                         if (!tasksToDelete.Any())
                         {
+                            _logger.LogInformation("[DeleteService]: Waiting for {0} minutes..",
+                                deleteDelay.TotalMinutes);
                             await Task.Delay(deleteDelay, ct);
                             continue;
                         }
 
                         db.SlackUpdateTasks.RemoveRange(tasksToDelete);
                         var result = await db.SaveChangesAsync(ct);
-                        _logger.LogInformation("{0} tasks removed from the db", result);
+                        _logger.LogInformation("[DeleteService]: {0} tasks removed from the db", result);
                     }
                 }
             }, ct);
