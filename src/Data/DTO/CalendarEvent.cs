@@ -42,6 +42,7 @@ namespace DuaBot.Data
         {
             return new SlackUpdateTask
             {
+                Subject = cevent.Subject,
                 End = cevent.End.DateTime,
                 Start = cevent.Start.DateTime,
                 SlackUserId = userToken.SlackId,
