@@ -4,9 +4,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using DuaBot.Data;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using DuaBot.Data;
 
 namespace DuaBot.Services
 {
@@ -37,60 +37,57 @@ namespace DuaBot.Services
                             try
                             {
                                 _logger.LogInformation("Re-authorizing user {0}", token.SlackId);
-                                await httpClient.ReAuthorizeGraphUser(token, stoppingToken).ConfigureAwait(false);
+                                await httpClient.ReAuthorizeGraphUser(token, stoppingToken);
                                 db.UserTokens.Update(token);
-                                await db.SaveChangesAsync(stoppingToken).ConfigureAwait(false);
+                                await db.SaveChangesAsync(stoppingToken);
                             }
                             catch (Exception ex)
                             {
                                 // We cannot do anything here,
-                                // just continue and hope that is goes better
-                                // the next time we try
+                                // just continue and hope that is goes better the next time we try
                                 _logger.LogError(ex, "Failed to re-authorizing user {0}", token.SlackId);
                                 continue;
                             }
                         }
 
                         // Process the tokens in parallel
-                        await calendarEventSink.SendAsync(token).ConfigureAwait(false);
+                        await calendarEventSink.SendAsync(token);
                     }
                 }
 
-                await Task.Delay(Options.Default.CalendarServiceInterval, stoppingToken).ConfigureAwait(false);
+                await Task.Delay(Options.Default.CalendarServiceInterval, stoppingToken);
             }
 
             calendarEventSink.Complete();
         }
 
-        internal ActionBlock<UserTokenMap> CreateCalendarSink(HttpClient httpClient, CancellationToken ct)
-        {
-            return new ActionBlock<UserTokenMap>(async (userToken) =>
-            {
-                try
+        private ActionBlock<UserTokenMap> CreateCalendarSink(HttpClient httpClient, CancellationToken ct) =>
+            new ActionBlock<UserTokenMap>(async (userToken) =>
                 {
-                    var events = await httpClient.GetCalendarEvents(userToken, ct).ConfigureAwait(false);
-                    var attending = events.value.Where(x => x.ResponseStatus.IsAttending);
-                    var createTasks = attending.Select(calendar => calendar.FromCalendarValue(userToken));
-
-                    using (var db = new DuaBotContext())
+                    try
                     {
-                        await db.SlackUpdateTasks.AddRangeAsync(createTasks, ct).ConfigureAwait(false);
-                        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-                    }
+                        var events = await httpClient.GetCalendarEvents(userToken, ct);
+                        var attending = events.value.Where(x => x.ResponseStatus.IsAttending);
+                        var createTasks = attending.Select(calendar => calendar.FromCalendarValue(userToken));
 
-                    _logger.LogInformation("Queued up slack status update for user {0}", userToken.SlackId);
-                }
-                catch (Exception ex)
+                        using (var db = new DuaBotContext())
+                        {
+                            await db.SlackUpdateTasks.AddRangeAsync(createTasks, ct);
+                            await db.SaveChangesAsync(ct);
+                        }
+
+                        _logger.LogInformation("Queued up slack status update for user {0}", userToken.SlackId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error when processing calendar events for user {0}", userToken.SlackId);
+                    }
+                },
+                new ExecutionDataflowBlockOptions()
                 {
-                    _logger.LogError(ex, "Error when processing calendar events for user {0}", userToken.SlackId);
-                }
-            },
-            new ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = 10,
-                CancellationToken = ct,
-                MaxDegreeOfParallelism = Environment.ProcessorCount,
-            });
-        }
+                    BoundedCapacity = 10,
+                    CancellationToken = ct,
+                    MaxDegreeOfParallelism = Environment.ProcessorCount,
+                });
     }
 }

@@ -1,25 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using DuaBot.Services;
 using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Hosting;
-using System.Threading;
-using Microsoft.Extensions.Logging.Debug;
+using Microsoft.Extensions.Logging;
 using Serilog;
-using Serilog.Sinks.SystemConsole;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
-using DuaBot.Services;
 
 namespace DuaBot
 {

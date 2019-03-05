@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -23,8 +23,7 @@ namespace DuaBot.Data
 
     public static class UserTokenMapExtensions
     {
-        public static async Task<UserTokenMap> AuthorizeGraphUser(
-            this HttpClient httpClient, string code, string user_id, CancellationToken ct)
+        public static async Task<UserTokenMap> AuthorizeGraphUser(this HttpClient httpClient, string code, string userId, CancellationToken ct)
         {
             var options = Options.Default;
             var url = $"https://login.microsoftonline.com/common/oauth2/v2.0/token";
@@ -40,19 +39,20 @@ namespace DuaBot.Data
 
             var request = new FormUrlEncodedContent(parameters);
             var response = await httpClient.PostAsync(url, request, ct);
+
             response.EnsureSuccessStatusCode();
+
             var content = await response.Content.ReadAsAsync<MsGraphToken>(ct);
             return new UserTokenMap()
             {
-                SlackId = user_id,
+                SlackId = userId,
                 AccessToken = content.access_token,
                 RefreshToken = content.refresh_token,
-                DateAdded = System.DateTime.UtcNow,
+                DateAdded = DateTime.UtcNow,
             };
         }
 
-        public static async Task<UserTokenMap> ReAuthorizeGraphUser(
-            this HttpClient httpClient, UserTokenMap token, CancellationToken ct)
+        public static async Task<UserTokenMap> ReAuthorizeGraphUser(this HttpClient httpClient, UserTokenMap token, CancellationToken ct)
         {
             var options = Options.Default;
             var url = $"https://login.microsoftonline.com/common/oauth2/v2.0/token";
@@ -68,7 +68,9 @@ namespace DuaBot.Data
 
             var request = new FormUrlEncodedContent(parameters);
             var response = await httpClient.PostAsync(url, request, ct);
+
             response.EnsureSuccessStatusCode();
+
             var content = await response.Content.ReadAsAsync<MsGraphToken>(ct);
 
             token.DateAdded = DateTime.UtcNow;
