@@ -36,7 +36,7 @@ namespace DuaBot.Services
                         {
                             try
                             {
-                                _logger.LogInformation("Re-authorizing user {0}", token.SlackId);
+                                _logger.LogInformation("[CalendarService]: Re-authorizing user {0}", token.SlackId);
                                 await httpClient.ReAuthorizeGraphUser(token, stoppingToken);
                                 db.UserTokens.Update(token);
                                 await db.SaveChangesAsync(stoppingToken);
@@ -45,7 +45,7 @@ namespace DuaBot.Services
                             {
                                 // We cannot do anything here,
                                 // just continue and hope that is goes better the next time we try
-                                _logger.LogError(ex, "Failed to re-authorizing user {0}", token.SlackId);
+                                _logger.LogError(ex, "[CalendarService]: Failed to re-authorizing user {0}", token.SlackId);
                                 continue;
                             }
                         }
@@ -55,6 +55,8 @@ namespace DuaBot.Services
                     }
                 }
 
+                _logger.LogInformation("[CalendarService]: Waiting for {0} minutes..",
+                    Options.Default.CalendarServiceInterval.TotalMinutes);
                 await Task.Delay(Options.Default.CalendarServiceInterval, stoppingToken);
             }
 
@@ -70,17 +72,20 @@ namespace DuaBot.Services
                         var attending = events.value.Where(x => x.ResponseStatus.IsAttending);
                         var createTasks = attending.Select(calendar => calendar.FromCalendarValue(userToken));
 
-                        using (var db = new DuaBotContext())
+                        if (createTasks.Any())
                         {
-                            await db.SlackUpdateTasks.AddRangeAsync(createTasks, ct);
-                            await db.SaveChangesAsync(ct);
-                        }
+                            using (var db = new DuaBotContext())
+                            {
+                                await db.SlackUpdateTasks.AddRangeAsync(createTasks, ct);
+                                await db.SaveChangesAsync(ct);
+                            }
 
-                        _logger.LogInformation("Queued up slack status update for user {0}", userToken.SlackId);
+                            _logger.LogInformation("[CalendarService]: Queued up slack status update for user {0}", userToken.SlackId);
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error when processing calendar events for user {0}", userToken.SlackId);
+                        _logger.LogError(ex, "[CalendarService]: Error when processing calendar events for user {0}", userToken.SlackId);
                     }
                 },
                 new ExecutionDataflowBlockOptions()

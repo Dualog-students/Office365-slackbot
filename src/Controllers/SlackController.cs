@@ -33,7 +33,7 @@ namespace DuaBot.Controllers
             // Check if right slack app token
             if (payload.token != options.SlackAppToken)
             {
-                return BadRequest();
+                return Ok();
             }
 
             if (payload.command == "/register")
