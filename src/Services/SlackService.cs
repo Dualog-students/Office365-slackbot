@@ -40,38 +40,35 @@ namespace DuaBot.Services
                     }
                 }
 
-                await Task.Delay(Options.Default.SlackServiceInterval, stoppingToken).ConfigureAwait(false);
+                await Task.Delay(Options.Default.SlackServiceInterval, stoppingToken);
             }
 
             cleanUpTask.Dispose();
             slackEventSink.Complete();
         }
 
-        internal ActionBlock<SlackUpdateTask> CreateSlackUpdateSink(HttpClient httpClient, CancellationToken ct)
-        {
-            return new ActionBlock<SlackUpdateTask>(async (task) =>
-            {
-                try
+        private ActionBlock<SlackUpdateTask> CreateSlackUpdateSink(HttpClient httpClient, CancellationToken ct) =>
+            new ActionBlock<SlackUpdateTask>(async (task) =>
                 {
-                    await httpClient.UpdateUserSlackStatus(task, ct).ConfigureAwait(false);
-                    _logger.LogInformation("Update slack status for {0}", task.SlackUserId);
-                }
-                catch (Exception ex)
+                    try
+                    {
+                        await httpClient.UpdateUserSlackStatus(task, ct);
+                        _logger.LogInformation("Update slack status for {0}", task.SlackUserId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Something went wrong when update slack status for user {0}", task.SlackUserId);
+                    }
+                },
+                new ExecutionDataflowBlockOptions()
                 {
-                    _logger.LogError(ex, "Something went wrong when update slack status for user {0}", task.SlackUserId);
-                }
-            },
-            new ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = 10,
-                CancellationToken = ct,
-                MaxDegreeOfParallelism = Environment.ProcessorCount,
-            });
-        }
+                    BoundedCapacity = 10,
+                    CancellationToken = ct,
+                    MaxDegreeOfParallelism = Environment.ProcessorCount,
+                });
 
-        internal Task CreateCleanupTask(CancellationToken ct)
-        {
-            return Task.Run(async () =>
+        private Task CreateCleanupTask(CancellationToken ct) =>
+            Task.Run(async () =>
             {
                 var deleteDelay = Options.Default.SlackServiceDeleteInterval;
 
@@ -83,16 +80,15 @@ namespace DuaBot.Services
                         var hey = db.SlackUpdateTasks.ToArray();
                         if (!tasksToDelete.Any())
                         {
-                            await Task.Delay(deleteDelay, ct).ConfigureAwait(false);
+                            await Task.Delay(deleteDelay, ct);
                             continue;
                         }
 
                         db.SlackUpdateTasks.RemoveRange(tasksToDelete);
-                        var result = await db.SaveChangesAsync(ct).ConfigureAwait(false);
+                        var result = await db.SaveChangesAsync(ct);
                         _logger.LogInformation("{0} tasks removed from the db", result);
                     }
                 }
             }, ct);
-        }
     }
 }

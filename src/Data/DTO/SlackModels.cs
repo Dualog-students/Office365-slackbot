@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -35,8 +35,7 @@ namespace DuaBot.Data
 
     public static class SlackExtensions
     {
-        public static async Task<string> UpdateUserSlackStatus(
-            this HttpClient httpClient, SlackUpdateTask task, CancellationToken ct)
+        public static async Task<string> UpdateUserSlackStatus(this HttpClient httpClient, SlackUpdateTask task, CancellationToken ct)
         {
             var options = Options.Default;
             var request = new HttpRequestMessage(HttpMethod.Post, "https://slack.com/api/users.profile.set");
@@ -46,20 +45,18 @@ namespace DuaBot.Data
             {
                 profile = new Slack.Profile
                 {
-                    status_text = "In a meeting" +
-                        (options.UseCalendarSubject ? ": " + task.Subject : ""),
+                    status_text = "In a meeting" + (options.UseCalendarSubject ? ": " + task.Subject : ""),
                     status_emoji = ":spiral_calendar_pad:",
                     status_expiration = task.End.ToUnixTimeSeconds(),
                 }
             }), System.Text.Encoding.UTF8, "application/json");
 
-            var response = await httpClient.SendAsync(request, ct).ConfigureAwait(false);
+            var response = await httpClient.SendAsync(request, ct);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return await response.Content.ReadAsStringAsync();
         }
 
-        public static async Task<bool> SendSlackWebHookMessage(
-            this HttpClient httpClient, Slack.SlashCommand command, string msg, CancellationToken ct)
+        public static async Task<bool> SendSlackWebHookMessage(this HttpClient httpClient, Slack.SlashCommand command, string msg, CancellationToken ct)
         {
             try
             {
@@ -69,7 +66,7 @@ namespace DuaBot.Data
                         System.Text.Encoding.UTF8, "application/json")
                 };
 
-                var response = await httpClient.SendAsync(request);
+                var response = await httpClient.SendAsync(request, ct);
                 response.EnsureSuccessStatusCode();
                 return true;
             }

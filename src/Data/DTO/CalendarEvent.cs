@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,11 +14,12 @@ namespace DuaBot.Data
 
         public class Value
         {
-            public string subject { get; set; }
-            public End start { get; set; }
-            public End end { get; set; }
+            public string Subject { get; set; }
+            public End Start { get; set; }
+            public End End { get; set; }
             public Status ResponseStatus { get; set; }
         }
+
         public class Status
         {
             public Response Response { get; set; }
@@ -28,8 +29,8 @@ namespace DuaBot.Data
 
         public class End
         {
-            public DateTimeOffset dateTime { get; set; }
-            public string timeZone { get; set; }
+            public string TimeZone { get; set; }
+            public DateTimeOffset DateTime { get; set; }
         }
     }
 
@@ -37,27 +38,25 @@ namespace DuaBot.Data
 
     public static class CalendarEventExtensions
     {
-        public static SlackUpdateTask FromCalendarValue(
-            this CalendarEvent.Value cevent, UserTokenMap userToken)
+        public static SlackUpdateTask FromCalendarValue(this CalendarEvent.Value cevent, UserTokenMap userToken)
         {
             return new SlackUpdateTask
             {
-                End = cevent.end.dateTime,
-                Start = cevent.start.dateTime,
+                End = cevent.End.DateTime,
+                Start = cevent.Start.DateTime,
                 SlackUserId = userToken.SlackId,
-                TimeZone = cevent.start.timeZone == cevent.end.timeZone ? cevent.start.timeZone : "UTC",
+                TimeZone = cevent.Start.TimeZone == cevent.End.TimeZone ? cevent.Start.TimeZone : "UTC",
             };
         }
 
-        public static async Task<CalendarEvent> GetCalendarEvents(
-            this HttpClient httpClient, UserTokenMap token, CancellationToken ct)
+        public static async Task<CalendarEvent> GetCalendarEvents(this HttpClient httpClient, UserTokenMap token, CancellationToken ct)
         {
             var request = new HttpRequestMessage(HttpMethod.Get,
             "https://graph.microsoft.com/v1.0/me/calendarview?startdatetime=2019-03-01T18:54:43.926Z&enddatetime=2019-03-02T18:54:43.926Z");
             request.Headers.Add("Authorization", "Bearer " + token.AccessToken);
-            var response = await httpClient.SendAsync(request, ct).ConfigureAwait(false);
+            var response = await httpClient.SendAsync(request, ct);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsAsync<CalendarEvent>(ct).ConfigureAwait(false);
+            return await response.Content.ReadAsAsync<CalendarEvent>(ct);
         }
     }
 }

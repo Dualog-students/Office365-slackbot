@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
+using DuaBot.Data;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using DuaBot.Data;
-using System.Threading;
 
 namespace DuaBot.Controllers
 {
@@ -30,7 +30,7 @@ namespace DuaBot.Controllers
         {
             var options = Options.Default;
 
-            // Check if rigth slack app token
+            // Check if right slack app token
             if (payload.token != options.SlackAppToken)
             {
                 return BadRequest();
@@ -41,27 +41,29 @@ namespace DuaBot.Controllers
                 using (var db = new DuaBotContext())
                 {
                     var token = await db.UserTokens.FirstOrDefaultAsync(x => x.SlackId == payload.user_id);
-                    if (token == null)
+                    if (token != null)
                     {
-                        _logger.LogInformation("User {0} not registered", payload.user_id);
-
-                        var id = Guid.NewGuid().ToString();
-                        var cache = _cache.Set(id, payload, TimeSpan.FromMinutes(2));
-
-                        var url = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
-                        url += "?client_id=" + options.MsGraphClientId;
-                        url += "&response_type=code";
-                        url += "&response_mode=query";
-                        url += "&redirect_uri=" + options.MsGraphRedirectUri;
-                        url += "&scope=offline_access%20" + options.MsGraphScopes.Replace(" ", "%20");
-                        url += "&state=" + id;
-
-                        return Ok($"Please register here {url}");
+                        return Ok("You are already registered😲");
                     }
-                }
 
-                // User is already registered
-                return Ok("You are already registered😲");
+                    _logger.LogInformation("User {0} not registered", payload.user_id);
+
+                    // Guid is sent with the URL so that we can look up this
+                    // registration from the cache later on in the process.
+
+                    var id = Guid.NewGuid().ToString();
+                    _cache.Set(id, payload, TimeSpan.FromMinutes(2));
+
+                    var url = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
+                    url += "?client_id=" + options.MsGraphClientId;
+                    url += "&response_type=code";
+                    url += "&response_mode=query";
+                    url += "&redirect_uri=" + options.MsGraphRedirectUri;
+                    url += "&scope=offline_access%20" + options.MsGraphScopes.Replace(" ", "%20");
+                    url += "&state=" + id;
+
+                    return Ok($"Please register here {url}");
+                }
             }
 
             if (payload.command == "/unregister")
@@ -101,22 +103,27 @@ namespace DuaBot.Controllers
                 if (!_cache.TryGetValue(state, out Slack.SlashCommand cmd))
                 {
                     if (await db.UserTokens.AnyAsync(x => x.SlackId == cmd.user_id, ct))
-                        await httpClient.SendSlackWebHookMessage(cmd, "You are already registered.", ct).ConfigureAwait(false);
+                    {
+                        await httpClient.SendSlackWebHookMessage(cmd, "You are already registered.", ct);
+                    }
                     else
-                        await httpClient.SendSlackWebHookMessage(cmd, "Something went wrong, please try again.", ct).ConfigureAwait(false);
+                    {
+                        await httpClient.SendSlackWebHookMessage(cmd, "Something went wrong, please try again.", ct);
+                    }
 
                     return BadRequest();
                 }
 
                 _cache.Remove(state);
 
-                var graphTokenMapping = await httpClient.AuthorizeGraphUser(code, cmd.user_id, ct).ConfigureAwait(false);
-                await db.UserTokens.AddAsync(graphTokenMapping, ct).ConfigureAwait(false);
-                await db.SaveChangesAsync(ct).ConfigureAwait(false);
+                var graphTokenMapping = await httpClient.AuthorizeGraphUser(code, cmd.user_id, ct);
+
+                await db.UserTokens.AddAsync(graphTokenMapping, ct);
+                await db.SaveChangesAsync(ct);
 
                 _logger.LogInformation("User {0} registered", cmd.user_id);
 
-                await httpClient.SendSlackWebHookMessage(cmd, "You are now registered :rocket:", ct).ConfigureAwait(false);
+                await httpClient.SendSlackWebHookMessage(cmd, "You are now registered :rocket:", ct);
 
                 return new ContentResult
                 {
